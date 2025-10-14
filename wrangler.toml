@@ -1,0 +1,12 @@
+name = "contractstage"
+compatibility_date = "2024-01-15"
+
+[env.production]
+name = "contractstage"
+
+# Cloudflare Pages configuration
+pages_build_output_dir = "dist"
+
+# Environment variables will be set in Cloudflare Pages dashboard
+# VITE_SUPABASE_URL = "your-supabase-url"
+# VITE_SUPABASE_ANON_KEY = "your-supabase-anon-key"

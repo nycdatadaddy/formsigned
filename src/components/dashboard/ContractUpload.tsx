@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { PDFFormBuilder } from '../pdf/PDFFormBuilder';
+import { PDFFormField } from '../../types/pdf';
 import { Upload, X, FileText, User } from 'lucide-react';
 
 interface ContractUploadProps {
@@ -14,6 +16,9 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
   const [contractType, setContractType] = useState<'performer' | 'management' | 'other'>('performer');
   const [clientEmail, setClientEmail] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [fileUrl, setFileUrl] = useState<string>('');
+  const [formFields, setFormFields] = useState<PDFFormField[]>([]);
+  const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -23,14 +28,22 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
     if (selectedFile) {
       if (selectedFile.type === 'application/pdf') {
         setFile(selectedFile);
+        // Create temporary URL for PDF preview
+        const tempUrl = URL.createObjectURL(selectedFile);
+        setFileUrl(tempUrl);
         setError('');
       } else {
         setError('Please select a PDF file');
         setFile(null);
+        setFileUrl('');
       }
     }
   };
 
+  const handleFormFieldsSave = (fields: PDFFormField[]) => {
+    setFormFields(fields);
+    setShowFormBuilder(false);
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || !title.trim()) return;
@@ -106,6 +119,23 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
 
       if (error) throw error;
 
+      // Save form fields if any
+      if (formFields.length > 0) {
+        const { error: fieldsError } = await supabase
+          .from('contract_form_fields')
+          .insert(
+            formFields.map(field => ({
+              contract_id: data.id,
+              field_type: field.type,
+              field_data: field,
+              created_by: userId
+            }))
+          );
+
+        if (fieldsError) {
+          console.error('Error saving form fields:', fieldsError);
+        }
+      }
       // Log the action
       await supabase.from('audit_logs').insert({
         contract_id: data.id,
@@ -125,6 +155,10 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
       setError(error.message || 'Upload failed');
     } finally {
       setLoading(false);
+      // Clean up temporary URL
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
     }
   };
 
@@ -239,6 +273,23 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
               className="hidden"
               required
             />
+            
+            {file && (
+              <div className="mt-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowFormBuilder(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Add Form Fields ({formFields.length})
+                </button>
+                {formFields.length > 0 && (
+                  <span className="text-xs text-green-600">
+                    {formFields.length} field{formFields.length !== 1 ? 's' : ''} configured
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
@@ -259,6 +310,15 @@ export function ContractUpload({ onClose, onUpload, userId }: ContractUploadProp
           </div>
         </form>
       </div>
+      
+      {showFormBuilder && fileUrl && (
+        <PDFFormBuilder
+          fileUrl={fileUrl}
+          initialFields={formFields}
+          onSave={handleFormFieldsSave}
+          onCancel={() => setShowFormBuilder(false)}
+        />
+      )}
     </div>
   );
 }

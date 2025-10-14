@@ -76,6 +76,25 @@ export interface Database {
           signature_data?: string;
         };
       };
+      contract_form_fields: {
+        Row: {
+          id: string;
+          contract_id: string;
+          field_type: 'signature' | 'initial' | 'checkbox' | 'date' | 'text';
+          field_data: Record<string, any>;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          contract_id: string;
+          field_type: 'signature' | 'initial' | 'checkbox' | 'date' | 'text';
+          field_data: Record<string, any>;
+          created_by: string;
+        };
+        Update: {
+          field_data?: Record<string, any>;
+        };
+      };
       audit_logs: {
         Row: {
           id: string;

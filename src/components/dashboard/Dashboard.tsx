@@ -27,7 +27,7 @@ export function Dashboard({ session }: DashboardProps) {
         .from('contracts')
         .select(`
           *,
-          client:user_profiles(full_name, email)
+          client:user_profiles!contracts_client_id_fkey(full_name, email)
         `)
         .order('created_at', { ascending: false });
 
